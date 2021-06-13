@@ -18,4 +18,4 @@ Source: https://github.com/M3TO/GizmoReloaded
 
 Install with BepInEx
 
-Copy ExploreTogether.dll into Valheim/BepInEx/plugins
+Copy GizmoReloaded.dll into Valheim/BepInEx/plugins
