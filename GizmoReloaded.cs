@@ -11,14 +11,14 @@ using UnityEngine;
 
 namespace GizmoReloaded
 {
-    [BepInPlugin("m3to.mods.GizmoReloaded", "Gizmo Reloaded", "1.0.0")]
+    [BepInPlugin("m3to.mods.GizmoReloaded", "Gizmo Reloaded", "1.0.1")]
     public class Plugin : BaseUnityPlugin
     {
         public static Plugin instance;
 
         public const string PluginId = "m3to.mods.GizmoReloaded";
         public const string DisplayName = "Gizmo Reloaded";
-        public const string Version = "1.0.0";
+        public const string Version = "1.0.1";
 
         int xRot;
         int yRot;
