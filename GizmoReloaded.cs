@@ -11,14 +11,14 @@ using UnityEngine;
 
 namespace GizmoReloaded
 {
-    [BepInPlugin("m3to.mods.GizmoReloaded", "Gizmo Reloaded", "1.0.2")]
+    [BepInPlugin("m3to.mods.GizmoReloaded", "Gizmo Reloaded", "1.1.0")]
     public class Plugin : BaseUnityPlugin
     {
         public static Plugin instance;
 
         public const string PluginId = "m3to.mods.GizmoReloaded";
         public const string DisplayName = "Gizmo Reloaded";
-        public const string Version = "1.0.2";
+        public const string Version = "1.1.0";
 
         Transform gizmoRoot;
 
@@ -227,29 +227,29 @@ namespace GizmoReloaded
         {
             if (axis == "X")
             {
-                xGizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.right);
+                gizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.right);
             }
             else if (axis == "Y")
             {
-                yGizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.up);
+                gizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.up);
             }
             else if (axis == "Z")
             {
-                zGizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.forward);
+                gizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.forward);
             }
 
         }
 
         private void ResetRotation()
         {
-            xGizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.up);
-            yGizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.right);
-            zGizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.forward);
+            gizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.up);
+            gizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.right);
+            gizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.forward);
         }
 
         private static Quaternion GetPlacementAngle(float x, float y, float z)
         {
-            return instance.xGizmoRoot.rotation;
+            return instance.gizmoRoot.rotation;
         }
 
         private static void notifyUser(string Message, MessageHud.MessageType position = MessageHud.MessageType.TopLeft)
