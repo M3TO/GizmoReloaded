@@ -11,24 +11,20 @@ using UnityEngine;
 
 namespace GizmoReloaded
 {
-    [BepInPlugin("m3to.mods.GizmoReloaded", "Gizmo Reloaded", "1.1.0")]
+    [BepInPlugin(PluginId, DisplayName, Version)]
     public class Plugin : BaseUnityPlugin
     {
         public static Plugin instance;
 
         public const string PluginId = "m3to.mods.GizmoReloaded";
         public const string DisplayName = "Gizmo Reloaded";
-        public const string Version = "1.1.0";
+        public const string Version = "1.1.2";
 
         Transform gizmoRoot;
 
         Transform xGizmo;
         Transform yGizmo;
         Transform zGizmo;
-
-        Transform xGizmoRoot;
-        Transform yGizmoRoot;
-        Transform zGizmoRoot;
 
         private ConfigEntry<string> snapDivisions;
         private ConfigEntry<string> xKey;
@@ -38,19 +34,21 @@ namespace GizmoReloaded
         private ConfigEntry<string> cycleNextSnapKey;
         private ConfigEntry<string> displayMode;
         private ConfigEntry<string> cycleDisplayModeKey;
+        private ConfigEntry<string> allowedTools;
 
         public int snapIndex;
         public int snapDivision;
         public float snapAngle;
         public List<int> snapDivs;
         public int snapCount;
+        public List<string> whitelistTools;
 
         GameObject gizmoPrefab;
 
         private void Awake()
         {
             instance = this;
-            snapDivisions = Config.Bind("General", "SnapDivisions", "8, 16, 32, 64", "The different Snap Divisions you can cycle through");
+            snapDivisions = Config.Bind("General", "SnapDivisions", "8, 16, 32, 64", "The different Snap Divisions per 360° you can cycle through (Vanilla is 16)");
             cyclePrevSnapKey = Config.Bind("General", "CyclePrevSnapKey", "KeypadMinus", "Press this key to go to the previous Snap Division");
             cycleNextSnapKey = Config.Bind("General", "CycleNextSnapKey", "KeypadPlus", "Press this key to go to the next Snap Division");
             xKey = Config.Bind("General", "xKey", "LeftControl", "Hold this key to rotate in the x plane (red circle)");
@@ -58,6 +56,7 @@ namespace GizmoReloaded
             resetKey = Config.Bind("General", "ResetKey", "V", "Press this key to reset all axes to zero rotation");
             displayMode = Config.Bind("General", "DisplayMode", "ShowAll", "The default visuals mode - Options are ShowAll, OnlySelected, None");
             cycleDisplayModeKey = Config.Bind("General", "CycleDisplayModeKey", "KeypadEnter", "Press this key to cycle through the different axis Display Modes");
+            allowedTools = Config.Bind("General", "AllowedTools", "item_hammer, item_cultivator, item_blueprintrune, PlumgaPlantItShovel", "The different Tools that can use Gizmos");
 
             var bundle = AssetBundle.LoadFromMemory(ResourceUtils.GetResource(Assembly.GetExecutingAssembly(), "GizmoReloaded.Resources.gizmos"));
             gizmoPrefab = bundle.LoadAsset<GameObject>("GizmoRoot");
@@ -68,9 +67,11 @@ namespace GizmoReloaded
 
             snapDivs = snapDivisions.Value.Split(',').Select(Int32.Parse).ToList();
             snapCount = snapDivs.Count();
-            snapIndex = 0;
+            snapIndex = 1;
             snapDivision = snapDivs[snapIndex];
-            snapAngle = 360f / snapDivs[snapIndex];           
+            snapAngle = 360f / snapDivs[snapIndex];
+
+            whitelistTools = allowedTools.Value.Split(',').Select(t => t.Trim().Insert(0, "$")).ToList();
         }
 
         public void UpdatePlacement(Player player, GameObject placementGhost, bool takeInput)
@@ -91,10 +92,6 @@ namespace GizmoReloaded
                 xGizmo.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 0f, 0f, 1f);
                 yGizmo.GetComponent<MeshRenderer>().material.color = new Color(0f, 1.0f, 0f, 1f);
                 zGizmo.GetComponent<MeshRenderer>().material.color = new Color(0f, 0f, 1.0f, 1f);
-
-                xGizmoRoot = gizmoRoot.Find("YRoot/ZRoot/XRoot");
-                yGizmoRoot = gizmoRoot.Find("YRoot");
-                zGizmoRoot = gizmoRoot.Find("YRoot/ZRoot");
             }
 
             var marker = player.GetPrivateField<GameObject>("m_placementMarkerInstance");
@@ -110,7 +107,12 @@ namespace GizmoReloaded
             if (!takeInput)
                 return;
 
-            var buildMode = Player.m_localPlayer.GetRightItem().m_shared.m_name == "$item_hammer";
+            bool IsPieceSlectionVisible()
+            {
+                return !(Hud.instance == null) && Hud.instance.m_buildHud.activeSelf && Hud.instance.m_pieceSelectionWindow.activeSelf;
+            };
+
+            bool buildMode = whitelistTools.Contains(Player.m_localPlayer.GetRightItem().m_shared.m_name) && !IsPieceSlectionVisible();
 
             switch (displayMode.Value)
             {
@@ -127,7 +129,9 @@ namespace GizmoReloaded
                     break;
             }
 
-            if (Enum.TryParse<KeyCode>(cycleDisplayModeKey.Value, out var toggleDisplayModeKeyCode) && Input.GetKeyUp(toggleDisplayModeKeyCode) && buildMode)
+            if (Enum.TryParse<KeyCode>(cycleDisplayModeKey.Value, out var toggleDisplayModeKeyCode) 
+                && Input.GetKeyUp(toggleDisplayModeKeyCode) 
+                && buildMode)
             {
                 switch (displayMode.Value)
                 {
