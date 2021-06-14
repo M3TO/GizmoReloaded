@@ -11,18 +11,14 @@ using UnityEngine;
 
 namespace GizmoReloaded
 {
-    [BepInPlugin("m3to.mods.GizmoReloaded", "Gizmo Reloaded", "1.0.1")]
+    [BepInPlugin("m3to.mods.GizmoReloaded", "Gizmo Reloaded", "1.0.2")]
     public class Plugin : BaseUnityPlugin
     {
         public static Plugin instance;
 
         public const string PluginId = "m3to.mods.GizmoReloaded";
         public const string DisplayName = "Gizmo Reloaded";
-        public const string Version = "1.0.1";
-
-        int xRot;
-        int yRot;
-        int zRot;
+        public const string Version = "1.0.2";
 
         Transform gizmoRoot;
 
@@ -40,8 +36,8 @@ namespace GizmoReloaded
         private ConfigEntry<string> resetKey;
         private ConfigEntry<string> cyclePrevSnapKey;
         private ConfigEntry<string> cycleNextSnapKey;
-        private ConfigEntry<bool> displayVisuals;
-        private ConfigEntry<string> toggleVisuals;
+        private ConfigEntry<string> displayMode;
+        private ConfigEntry<string> cycleDisplayModeKey;
 
         public int snapIndex;
         public int snapDivision;
@@ -56,12 +52,12 @@ namespace GizmoReloaded
             instance = this;
             snapDivisions = Config.Bind("General", "SnapDivisions", "8, 16, 32, 64", "The different Snap Divisions you can cycle through");
             cyclePrevSnapKey = Config.Bind("General", "CyclePrevSnapKey", "KeypadMinus", "Press this key to go to the previous Snap Division");
-            cycleNextSnapKey = Config.Bind("General", "CycleNextSnapKey", "KeypadPlus", "Press this key to go to the next Snap Division");            
+            cycleNextSnapKey = Config.Bind("General", "CycleNextSnapKey", "KeypadPlus", "Press this key to go to the next Snap Division");
             xKey = Config.Bind("General", "xKey", "LeftControl", "Hold this key to rotate in the x plane (red circle)");
             zKey = Config.Bind("General", "zKey", "LeftAlt", "Hold this key to rotate in the z plane (blue circle)");
             resetKey = Config.Bind("General", "ResetKey", "V", "Press this key to reset all axes to zero rotation");
-            displayVisuals = Config.Bind("General", "DisplayVisuals", true, "Whether ot not the display of Axis Indicators is displayed by default");
-            toggleVisuals = Config.Bind("General", "ToggleVisuals", "KeypadEnter", "Press this key to toggle the display of the Axis Indicators");
+            displayMode = Config.Bind("General", "DisplayMode", "ShowAll", "The default visuals mode - Options are ShowAll, OnlySelected, None");
+            cycleDisplayModeKey = Config.Bind("General", "CycleDisplayModeKey", "KeypadEnter", "Press this key to cycle through the different axis Display Modes");
 
             var bundle = AssetBundle.LoadFromMemory(ResourceUtils.GetResource(Assembly.GetExecutingAssembly(), "GizmoReloaded.Resources.gizmos"));
             gizmoPrefab = bundle.LoadAsset<GameObject>("GizmoRoot");
@@ -70,13 +66,11 @@ namespace GizmoReloaded
             Harmony.CreateAndPatchAll(typeof(UpdatePlacementGhost_Patch));
             Harmony.CreateAndPatchAll(typeof(UpdatePlacement_Patch));
 
-            
             snapDivs = snapDivisions.Value.Split(',').Select(Int32.Parse).ToList();
             snapCount = snapDivs.Count();
             snapIndex = 0;
             snapDivision = snapDivs[snapIndex];
-            snapAngle = 180f / snapDivs[snapIndex];
-
+            snapAngle = 360f / snapDivs[snapIndex];           
         }
 
         public void UpdatePlacement(Player player, GameObject placementGhost, bool takeInput)
@@ -94,10 +88,9 @@ namespace GizmoReloaded
                 yGizmo.GetComponent<Renderer>().material = new Material(Shader.Find("Standard"));
                 zGizmo.GetComponent<Renderer>().material = new Material(Shader.Find("Standard"));
 
-                xGizmo.GetComponent<MeshRenderer>().material.color = new Color(0f, 1.0f, 0f, 0.5f);
-                yGizmo.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 0f, 0f, 0.5f);
-                zGizmo.GetComponent<MeshRenderer>().material.color = new Color(0f, 0f, 1.0f, 0.5f);
-
+                xGizmo.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 0f, 0f, 1f);
+                yGizmo.GetComponent<MeshRenderer>().material.color = new Color(0f, 1.0f, 0f, 1f);
+                zGizmo.GetComponent<MeshRenderer>().material.color = new Color(0f, 0f, 1.0f, 1f);
 
                 xGizmoRoot = gizmoRoot.Find("YRoot/ZRoot/XRoot");
                 yGizmoRoot = gizmoRoot.Find("YRoot");
@@ -119,20 +112,47 @@ namespace GizmoReloaded
 
             var buildMode = Player.m_localPlayer.GetRightItem().m_shared.m_name == "$item_hammer";
 
-            ToggleVisuals(displayVisuals.Value);
-
-            if (Enum.TryParse<KeyCode>(toggleVisuals.Value, out var toggleVisualsKeyCode) && Input.GetKeyUp(toggleVisualsKeyCode) && buildMode)
+            switch (displayMode.Value)
             {
-                if (displayVisuals.Value)
+                case "ShowAll":
+                    xGizmo.localScale = Vector3.one * 0.9f;
+                    yGizmo.localScale = Vector3.one * 0.9f;
+                    zGizmo.localScale = Vector3.one * 0.9f;
+                    break;
+                case "OnlySelected":
+                case "None":
+                    xGizmo.localScale = new Vector3(0f, 0f, 0f);
+                    yGizmo.localScale = new Vector3(0f, 0f, 0f);
+                    zGizmo.localScale = new Vector3(0f, 0f, 0f);
+                    break;
+            }
+
+            if (Enum.TryParse<KeyCode>(cycleDisplayModeKey.Value, out var toggleDisplayModeKeyCode) && Input.GetKeyUp(toggleDisplayModeKeyCode) && buildMode)
+            {
+                switch (displayMode.Value)
                 {
-                    displayVisuals.Value = false;
-                } else
-                {
-                    displayVisuals.Value = true;
+                    case "ShowAll":
+                        xGizmo.localScale = new Vector3(0f, 0f, 0f);
+                        yGizmo.localScale = new Vector3(0f, 0f, 0f);
+                        zGizmo.localScale = new Vector3(0f, 0f, 0f);
+                        displayMode.Value = "OnlySelected";
+                        notifyUser("Display Mode is \"OnlySelected\"");
+                        break;
+                    case "OnlySelected":
+                        xGizmo.localScale = new Vector3(0f, 0f, 0f);
+                        yGizmo.localScale = new Vector3(0f, 0f, 0f);
+                        zGizmo.localScale = new Vector3(0f, 0f, 0f);
+                        displayMode.Value = "None";
+                        notifyUser("Display Mode is \"None\"");
+                        break;
+                    case "None":
+                        xGizmo.localScale = Vector3.one * 0.9f;
+                        yGizmo.localScale = Vector3.one * 0.9f;
+                        zGizmo.localScale = Vector3.one * 0.9f;
+                        displayMode.Value = "ShowAll";
+                        notifyUser("Display Mode is \"ShowAll\"");
+                        break;
                 }
-
-
-                ToggleVisuals(displayVisuals.Value);
             }
 
             if (Enum.TryParse<KeyCode>(cyclePrevSnapKey.Value, out var prevSnapKeyCode) && Input.GetKeyUp(prevSnapKeyCode) && buildMode)
@@ -151,68 +171,80 @@ namespace GizmoReloaded
 
             if (Enum.TryParse<KeyCode>(xKey.Value, out var xKeyCode) && Input.GetKey(xKeyCode) && buildMode)
             {
-                HandleAxisInput(scrollWheelInput, ref xRot, xGizmo);
+                HandleAxisInput(scrollWheelInput, xGizmo, "X");
             }
             else if (Enum.TryParse<KeyCode>(zKey.Value, out var zKeyCode) && Input.GetKey(zKeyCode) && buildMode)
             {
-                HandleAxisInput(scrollWheelInput, ref zRot, zGizmo);
+                HandleAxisInput(scrollWheelInput, zGizmo, "Z");
             }
             else if (buildMode)
             {
-                HandleAxisInput(scrollWheelInput, ref yRot, yGizmo);
+                HandleAxisInput(scrollWheelInput, yGizmo, "Y");
             }
 
             if (Enum.TryParse<KeyCode>(resetKey.Value, out var resetKeyCode) && Input.GetKeyUp(resetKeyCode) && buildMode)
             {
                 ResetRotation();
-            }
-
-            UpdateRotation();
+            }            
         }
 
-        private void HandleAxisInput(int scrollWheelInput, ref int rot, Transform gizmo)
+        private void HandleAxisInput(int scrollWheelInput, Transform gizmo, string axis)
         {
-            gizmo.localScale = displayVisuals.Value ? Vector3.one * 1f : new Vector3(0f, 0f, 0f);
-            rot = (rot + scrollWheelInput) % (snapDivision * 2);
+            if (displayMode.Value == "ShowAll")
+            {
+                gizmo.localScale = Vector3.one * 1.1f;
+            } else if (displayMode.Value == "OnlySelected")
+            {
+                gizmo.localScale = Vector3.one * 1.1f;
+                if (axis == "X")
+                {
+                    yGizmo.localScale = new Vector3(0f, 0f, 0f);
+                    zGizmo.localScale = new Vector3(0f, 0f, 0f);
+                } else if (axis == "Y")
+                {
+                    xGizmo.localScale = new Vector3(0f, 0f, 0f);
+                    zGizmo.localScale = new Vector3(0f, 0f, 0f);
+                }  else if (axis == "Z")
+                {
+                    xGizmo.localScale = new Vector3(0f, 0f, 0f);
+                    yGizmo.localScale = new Vector3(0f, 0f, 0f);
+                }
+            }
+
+            UpdateRotation(scrollWheelInput, axis);
         }
 
         private void SetSnaps(int snapIndex)
         {
             snapDivision = snapDivs[snapIndex];
-            snapAngle = 180f / snapDivision;
+            snapAngle = 360f / snapDivision;
+            ResetRotation();
 
             notifyUser("Current snap divisions: " + snapDivision);
         }
 
-        private void ToggleVisuals(bool show)
+        private void UpdateRotation(int scrollWheelinput, string axis = "X")
         {
-            if (show)
+            if (axis == "X")
             {
-                xGizmo.localScale = Vector3.one * 0.8f;
-                yGizmo.localScale = Vector3.one * 0.8f;
-                zGizmo.localScale = Vector3.one * 0.8f;
+                xGizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.right);
             }
-            else
+            else if (axis == "Y")
             {
-                xGizmo.localScale = new Vector3(0f, 0f, 0f);
-                yGizmo.localScale = new Vector3(0f, 0f, 0f);
-                zGizmo.localScale = new Vector3(0f, 0f, 0f);
+                yGizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.up);
             }
-        }
+            else if (axis == "Z")
+            {
+                zGizmoRoot.rotation *= Quaternion.AngleAxis(scrollWheelinput * snapAngle, Vector3.forward);
+            }
 
-        private void UpdateRotation()
-        {
-            Quaternion xRotation = Quaternion.AngleAxis(xRot * snapAngle, Vector3.right);
-            Quaternion yRotation = Quaternion.AngleAxis(yRot * snapAngle, Vector3.up);
-            Quaternion zRotation = Quaternion.AngleAxis(zRot * snapAngle, Vector3.forward);
-            gizmoRoot.localRotation = yRotation * xRotation * zRotation;
         }
 
         private void ResetRotation()
         {
-            xRot = 0;
-            yRot = 0;
-            zRot = 0;
+            xGizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.up);
+            yGizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.right);
+            zGizmoRoot.rotation = Quaternion.AngleAxis(0f, Vector3.forward);
         }
 
         private static Quaternion GetPlacementAngle(float x, float y, float z)
