@@ -1,3 +1,7 @@
+# Warning
+This is an unofficial fix after this mod broke ~March 2022.
+I DO NOT plan on maintaining this mod in the future or post on NexusMods.
+
 # GizmoReloaded
 An intuitive advanced building tool
 
