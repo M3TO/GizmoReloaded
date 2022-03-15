@@ -15,7 +15,7 @@ namespace GizmoReloaded
             for (var i = 0; i < codes.Count; i++)
             {
                 if(!placementAnglePatched)
-                if (codes[i].opcode == OpCodes.Callvirt &&
+                if (codes[i].opcode == OpCodes.Stfld &&
                     codes[i + 1].opcode == OpCodes.Ldc_R4 &&
                     codes[i + 2].opcode == OpCodes.Ldc_R4 &&
                     codes[i + 3].opcode == OpCodes.Ldarg_0 &&
